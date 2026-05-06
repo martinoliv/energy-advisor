@@ -505,7 +505,7 @@ export default function EnergyAgent() {
           {showMenu && (
             <div style={{ position: "absolute", bottom: "calc(100% + 4px)", left: "13px", right: "13px", background: "#0D1626", border: "1px solid rgba(148,163,184,0.12)", borderRadius: "12px", overflow: "hidden", zIndex: 20, boxShadow: "0 -8px 24px rgba(0,0,0,0.4)" }}>
               {[
-                { ref: billRef, mode: "bill", icon: "🧾", color: "#818CF8", title: "A minha fatura de energia", desc: "PDF ou imagem · analiso e comparo com o mercado", accept: ".pdf,image/*" },
+                { ref: billRef, mode: "bill", icon: "🧾", color: "#818CF8", title: "A minha fatura de energia", desc: "PDF ou imagem · analiso e comparo com o mercado", accept: "application/pdf,image/*" },
                 { ref: suppRef, mode: "suppliers", icon: "📊", color: "#0EA5E9", title: "Lista de fornecedores", desc: "TXT, CSV ou PDF com dados dos fornecedores", accept: ".pdf,.txt,.csv" },
               ].map((opt, i) => (
                 <div key={opt.mode}>
