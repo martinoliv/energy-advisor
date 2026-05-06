@@ -426,6 +426,8 @@ export default function EnergyAgent() {
       else if (docData.type === "image") userContent = [{ type: "image", source: { type: "base64", media_type: docData.mediaType, data: docData.base64 } }, { type: "text", text: userMessage }];
       else userContent = `${userMessage}\n\n--- DOCUMENTO ---\n${docData.content}`;
       setDocData(null);
+      setDocName(null);
+      setDocType(null);
     } else { userContent = userMessage; }
 
     try {
