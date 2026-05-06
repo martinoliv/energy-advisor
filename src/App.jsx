@@ -143,6 +143,69 @@ function ConsentModal({ onAccept, onDecline }) {
   );
 }
 
+
+// ─── PWA: Install prompt ──────────────────────────────────────────────────
+function InstallPrompt() {
+  const [deferred, setDeferred] = useState(null);
+  const [show, setShow] = useState(false);
+  const [iosShow, setIosShow] = useState(false);
+
+  useEffect(() => {
+    // Verifica se já está instalado
+    if (window.matchMedia("(display-mode: standalone)").matches) return;
+
+    // iOS Safari não suporta beforeinstallprompt - mostra dica manual
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const dismissedAt = localStorage.getItem("pwa_install_dismissed");
+    const recent = dismissedAt && (Date.now() - parseInt(dismissedAt)) < 7 * 24 * 60 * 60 * 1000;
+
+    if (isIOS && !recent) {
+      setTimeout(() => setIosShow(true), 8000);
+      return;
+    }
+
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferred(e);
+      if (!recent) setTimeout(() => setShow(true), 5000);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const install = async () => {
+    if (!deferred) return;
+    deferred.prompt();
+    await deferred.userChoice;
+    setDeferred(null);
+    setShow(false);
+  };
+
+  const dismiss = () => {
+    localStorage.setItem("pwa_install_dismissed", Date.now().toString());
+    setShow(false);
+    setIosShow(false);
+  };
+
+  if (!show && !iosShow) return null;
+
+  return (
+    <div style={{ position: "fixed", bottom: "16px", left: "13px", right: "13px", background: "linear-gradient(135deg, rgba(14,165,233,0.15), rgba(99,102,241,0.15))", backdropFilter: "blur(20px)", border: "1px solid rgba(14,165,233,0.3)", borderRadius: "14px", padding: "13px 14px", zIndex: 60, boxShadow: "0 12px 32px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: "12px", animation: "slideUp 0.4s ease" }}>
+      <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "linear-gradient(135deg, #0EA5E9, #6366F1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", flexShrink: 0, boxShadow: "0 0 16px rgba(14,165,233,0.4)" }}>⚡</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: "12px", fontWeight: "700", color: "#F1F5F9" }}>{iosShow ? "Instalar app" : "Adicionar ao ecrã principal"}</div>
+        <div style={{ fontSize: "10px", color: "#94A3B8", marginTop: "2px" }}>
+          {iosShow ? "Toca em Partilhar → \"Adicionar ao ecrã principal\"" : "Acesso rápido como uma app nativa"}
+        </div>
+      </div>
+      {!iosShow && (
+        <button onClick={install} style={{ padding: "8px 14px", background: "linear-gradient(135deg, #0EA5E9, #6366F1)", border: "none", borderRadius: "8px", color: "#fff", fontSize: "11px", fontWeight: "700", cursor: "pointer", flexShrink: 0 }}>Instalar</button>
+      )}
+      <button onClick={dismiss} style={{ width: "28px", height: "28px", padding: 0, background: "transparent", border: "none", color: "#475569", cursor: "pointer", fontSize: "16px", flexShrink: 0 }}>✕</button>
+    </div>
+  );
+}
+
 // ─── RGPD: Banner inferior ────────────────────────────────────────────────
 function PrivacyBanner({ onRevoke }) {
   const [show, setShow] = useState(false);
@@ -426,15 +489,13 @@ export default function EnergyAgent() {
       else if (docData.type === "image") userContent = [{ type: "image", source: { type: "base64", media_type: docData.mediaType, data: docData.base64 } }, { type: "text", text: userMessage }];
       else userContent = `${userMessage}\n\n--- DOCUMENTO ---\n${docData.content}`;
       setDocData(null);
-      setDocName(null);
-      setDocType(null);
     } else { userContent = userMessage; }
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 2000, system: SYSTEM_PROMPT, messages: [...apiHistory, { role: "user", content: userContent }] })
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, system: SYSTEM_PROMPT, messages: [...apiHistory, { role: "user", content: userContent }] })
       });
       const rawText = await res.text();
       if (!rawText || rawText.trim() === "") throw new Error("Resposta vazia. Tenta novamente.");
@@ -465,6 +526,7 @@ export default function EnergyAgent() {
         input[type=range]{height:4px;border-radius:4px}
       `}</style>
 
+      {consent === true && <InstallPrompt />}
       {consent === null && <ConsentModal onAccept={() => setConsent(true)} onDecline={() => setConsent(false)} />}
 
       {/* Header */}
@@ -505,7 +567,7 @@ export default function EnergyAgent() {
           {showMenu && (
             <div style={{ position: "absolute", bottom: "calc(100% + 4px)", left: "13px", right: "13px", background: "#0D1626", border: "1px solid rgba(148,163,184,0.12)", borderRadius: "12px", overflow: "hidden", zIndex: 20, boxShadow: "0 -8px 24px rgba(0,0,0,0.4)" }}>
               {[
-                { ref: billRef, mode: "bill", icon: "🧾", color: "#818CF8", title: "A minha fatura de energia", desc: "PDF ou imagem · analiso e comparo com o mercado", accept: "application/pdf,image/*" },
+                { ref: billRef, mode: "bill", icon: "🧾", color: "#818CF8", title: "A minha fatura de energia", desc: "PDF ou imagem · analiso e comparo com o mercado", accept: ".pdf,image/*" },
                 { ref: suppRef, mode: "suppliers", icon: "📊", color: "#0EA5E9", title: "Lista de fornecedores", desc: "TXT, CSV ou PDF com dados dos fornecedores", accept: ".pdf,.txt,.csv" },
               ].map((opt, i) => (
                 <div key={opt.mode}>
